@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Brain, BookOpen, Lightbulb, Wrench, Plus, Search, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const workspaceSections = [
   {
@@ -68,6 +69,7 @@ export function WorkspaceHub() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input placeholder="Search workspace..." className="pl-9 w-[300px] bg-background" />
               </div>
+              <ThemeToggle />
             </div>
           </div>
         </div>

@@ -18,6 +18,7 @@ import { AI_MODELS, AI_PROVIDERS } from "@/lib/ai/catalog"
 import { getCachedModels, refreshDiscoveredModels } from "@/lib/ai/discovery"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function AdminLayout() {
   const [settings, setSettings] = useState<LocalSettings>(() => loadLocalSettings())
@@ -108,16 +109,19 @@ export function AdminLayout() {
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/chat">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">Settings</h1>
-              <p className="text-sm text-muted-foreground">Local configuration for AI and interface</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/chat">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-semibold">Settings</h1>
+                <p className="text-sm text-muted-foreground">Local configuration for AI and interface</p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>

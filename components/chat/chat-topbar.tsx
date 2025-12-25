@@ -18,6 +18,7 @@ import { useEffect, useState } from "react"
 import { AI_MODELS } from "@/lib/ai/catalog"
 import { loadLocalSettings, saveLocalSettings } from "@/lib/settings/local"
 import { getCachedModels, refreshDiscoveredModels } from "@/lib/ai/discovery"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface ChatTopbarProps {
   onToggleSidebar: () => void
@@ -167,7 +168,7 @@ export function ChatTopbar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-white"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={onToggleSidebar}
         >
           <Menu className="h-4 w-4" />
@@ -221,13 +222,13 @@ export function ChatTopbar({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
           <Share2 className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-white"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={async () => {
             try {
               const data = await exportToJson()
@@ -243,13 +244,14 @@ export function ChatTopbar({
         >
           <Download className="h-4 w-4" />
         </Button>
+        <ThemeToggle buttonClassName="h-8 w-8" />
         <Button size="sm" className="h-8" onClick={onNewChat}>
           <Plus className="h-4 w-4 mr-1.5" />
           New Chat
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
