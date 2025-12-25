@@ -18,10 +18,11 @@ export function AuthForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate auth
+    // Auth removed (Supabase removed). Keep UI in place for now.
     setTimeout(() => {
+      setIsLoading(false)
       window.location.href = "/chat"
-    }, 1000)
+    }, 300)
   }
 
   return (
@@ -54,11 +55,11 @@ export function AuthForm() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="name@example.com" required className="bg-background" />
+                  <Input id="email" name="email" type="email" placeholder="name@example.com" required className="bg-background" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required className="bg-background" />
+                  <Input id="password" name="password" type="password" required className="bg-background" />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}
@@ -70,12 +71,13 @@ export function AuthForm() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" type="text" placeholder="John Doe" required className="bg-background" />
+                  <Input id="name" name="name" type="text" placeholder="John Doe" required className="bg-background" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
                     id="signup-email"
+                    name="signup-email"
                     type="email"
                     placeholder="name@example.com"
                     required
@@ -84,7 +86,7 @@ export function AuthForm() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
-                  <Input id="signup-password" type="password" required className="bg-background" />
+                  <Input id="signup-password" name="signup-password" type="password" required className="bg-background" />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create Account"}

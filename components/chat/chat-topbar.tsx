@@ -9,45 +9,200 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, Plus, Share2, Download, MoreHorizontal } from "lucide-react"
+import { Menu, Plus, Share2, Download, MoreHorizontal, Trash2 } from "lucide-react"
+import { exportChatToJson, exportToJson, importFromJson } from "@/lib/chat/store"
+import { toast } from "@/hooks/use-toast"
+import type { ChatExportV1 } from "@/lib/chat/types"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { AI_MODELS } from "@/lib/ai/catalog"
+import { loadLocalSettings, saveLocalSettings } from "@/lib/settings/local"
+import { getCachedModels, refreshDiscoveredModels } from "@/lib/ai/discovery"
 
 interface ChatTopbarProps {
   onToggleSidebar: () => void
   onNewChat: () => void
+  chatId: string
+  onDeleteCurrentChat: () => Promise<void> | void
+  onDeleteOtherChats: () => Promise<void> | void
+  onDeleteAllChats: () => Promise<void> | void
 }
 
-export function ChatTopbar({ onToggleSidebar, onNewChat }: ChatTopbarProps) {
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function pickAndReadJsonFile(): Promise<ChatExportV1> {
+  return await new Promise((resolve, reject) => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = "application/json"
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return reject(new Error("No file selected"))
+      try {
+        const text = await file.text()
+        resolve(JSON.parse(text) as ChatExportV1)
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error("Invalid JSON file"))
+      }
+    }
+    input.click()
+  })
+}
+
+export function ChatTopbar({
+  onToggleSidebar,
+  onNewChat,
+  chatId,
+  onDeleteCurrentChat,
+  onDeleteOtherChats,
+  onDeleteAllChats,
+}: ChatTopbarProps) {
+  const [settings, setSettings] = useState(() => loadLocalSettings())
+  const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
+
+  useEffect(() => {
+    const onSettings = () => {
+      const s = loadLocalSettings()
+      setSettings(s)
+    }
+    window.addEventListener("edgen-chat:settings", onSettings)
+    return () => window.removeEventListener("edgen-chat:settings", onSettings)
+  }, [])
+
+  // When switching into Local (Ollama), refresh models once automatically.
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      if (settings.ai.providerId !== "ollama") {
+        setDiscoveredModels([])
+        return
+      }
+      const baseUrl = settings.ai.baseUrl.trim()
+      if (!baseUrl) return
+
+      // Show cached immediately.
+      const cached = getCachedModels("ollama", baseUrl)
+      if (cached?.models?.length) {
+        setDiscoveredModels(cached.models)
+        // Ensure the current selection is valid for the dropdown.
+        const current = settings.ai.model.trim()
+        if (!current || !cached.models.includes(current)) {
+          const next = { ...settings, ai: { ...settings.ai, model: cached.models[0] } }
+          saveLocalSettings(next)
+          setSettings(next)
+        }
+      }
+
+      try {
+        const models = await refreshDiscoveredModels("ollama", baseUrl)
+        if (cancelled) return
+        setDiscoveredModels(models ?? [])
+        if (models?.length) {
+          const current = settings.ai.model.trim()
+          if (!current || !models.includes(current)) {
+            const next = { ...settings, ai: { ...settings.ai, model: models[0] } }
+            saveLocalSettings(next)
+            setSettings(next)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [settings.ai.providerId, settings.ai.baseUrl])
+
   return (
     <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 text-muted-foreground hover:text-white"
           onClick={onToggleSidebar}
         >
           <Menu className="h-4 w-4" />
         </Button>
 
-        <Select defaultValue="gpt-4">
+        <Select
+          value={settings.ai.model}
+          onValueChange={(value) => {
+            const s = loadLocalSettings()
+            const next = {
+              ...s,
+              ai: {
+                ...s.ai,
+                model: value,
+              },
+            }
+            saveLocalSettings(next)
+            setSettings(next)
+          }}
+        >
           <SelectTrigger className="w-[200px] h-9 bg-background text-foreground">
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="gpt-4">GPT-4 Turbo</SelectItem>
-            <SelectItem value="gpt-3.5">GPT-3.5</SelectItem>
-            <SelectItem value="claude-3">Claude 3 Opus</SelectItem>
-            <SelectItem value="llama-2">Llama 2 70B</SelectItem>
-            <SelectItem value="mixtral">Mixtral 8x7B</SelectItem>
+            {settings.ai.providerId === "ollama" ? (
+              <>
+                {discoveredModels.map((m) => (
+                  <SelectItem key={`ollama-${m}`} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+                {discoveredModels.length === 0
+                  ? AI_MODELS.filter((m) => m.providerId === "ollama").map((m) => (
+                      <SelectItem key={m.id} value={m.model}>
+                        {m.label}
+                      </SelectItem>
+                    ))
+                  : null}
+              </>
+            ) : (
+              <>
+                {AI_MODELS.filter((m) => m.providerId === "openai_compatible").map((m) => (
+                  <SelectItem key={m.id} value={m.model}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
           <Share2 className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-white"
+          onClick={async () => {
+            try {
+              const data = await exportToJson()
+              downloadJson(`edgen-chat-backup-${new Date().toISOString().slice(0, 10)}.json`, data)
+            } catch (err) {
+              toast({
+                title: "Export failed",
+                description: err instanceof Error ? err.message : "Could not export chats.",
+                variant: "destructive",
+              })
+            }
+          }}
+        >
           <Download className="h-4 w-4" />
         </Button>
         <Button size="sm" className="h-8" onClick={onNewChat}>
@@ -56,15 +211,50 @@ export function ChatTopbar({ onToggleSidebar, onNewChat }: ChatTopbarProps) {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Clear conversation</DropdownMenuItem>
-            <DropdownMenuItem>Export chat</DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!chatId}
+              onSelect={async () => {
+                try {
+                  if (!chatId) return
+                  const data = await exportChatToJson(chatId)
+                  downloadJson(`chat-${chatId}.json`, data)
+                } catch (err) {
+                  toast({
+                    title: "Export failed",
+                    description: err instanceof Error ? err.message : "Could not export chat.",
+                    variant: "destructive",
+                  })
+                }
+              }}
+            >
+              Export chat
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={async () => {
+                try {
+                  const data = await pickAndReadJsonFile()
+                  await importFromJson(data)
+                  toast({ title: "Imported", description: "Chats imported successfully." })
+                } catch (err) {
+                  toast({
+                    title: "Import failed",
+                    description: err instanceof Error ? err.message : "Could not import.",
+                    variant: "destructive",
+                  })
+                }
+              }}
+            >
+              Import backup
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin">Settings</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
