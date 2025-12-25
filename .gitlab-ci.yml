@@ -1,0 +1,49 @@
+image: node:22-bullseye
+
+stages:
+  - build
+  - deploy
+
+variables:
+  # Keep pnpm store in-repo so GitLab cache can persist it between jobs.
+  PNPM_STORE_DIR: "$CI_PROJECT_DIR/.pnpm-store"
+
+cache:
+  key:
+    files:
+      - pnpm-lock.yaml
+  paths:
+    - .pnpm-store/
+
+before_script:
+  - corepack enable
+  # pnpm lockfile v9 => pnpm v9.x
+  - corepack prepare pnpm@9 --activate
+  - pnpm config set store-dir "$PNPM_STORE_DIR"
+  - pnpm install --frozen-lockfile
+
+build:
+  stage: build
+  script:
+    - pnpm build
+    - test -d out
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - out/
+
+pages:
+  stage: deploy
+  needs:
+    - job: build
+      artifacts: true
+  script:
+    - rm -rf public
+    - mv out public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
