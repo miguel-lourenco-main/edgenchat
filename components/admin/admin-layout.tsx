@@ -48,6 +48,18 @@ export function AdminLayout() {
   const isLocal = settings.ai.providerId === "ollama"
   const isProxy = settings.ai.connectionMode === "proxy"
   const endpoint = (isProxy ? settings.ai.proxyBaseUrl : settings.ai.baseUrl).trim()
+  const appOrigin = typeof window !== "undefined" ? window.location.origin : ""
+  const isHosted = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+  const isLoopbackBaseUrl = (() => {
+    const baseUrl = settings.ai.baseUrl.trim()
+    if (!baseUrl) return false
+    try {
+      const u = new URL(baseUrl)
+      return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
+    } catch {
+      return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")
+    }
+  })()
   const missing: string[] = []
   if (isProxy && !settings.ai.proxyBaseUrl.trim()) missing.push("Proxy Base URL")
   if (!isProxy && !settings.ai.baseUrl.trim()) missing.push("Base URL")
@@ -280,6 +292,32 @@ export function AdminLayout() {
                   >
                     ollama.com <ExternalLink className="h-4 w-4" />
                   </a>
+
+                  {isHosted && isLoopbackBaseUrl ? (
+                    <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                      <p className="text-xs font-medium mb-1">Using Local from GitLab Pages (or any hosted site)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your browser at <code>{appOrigin || "(hosted origin)"}</code> is calling your own machine at{" "}
+                        <code>{settings.ai.baseUrl.trim()}</code>. Ollama must allow CORS for this origin, otherwise you’ll
+                        see a CORS/403 error.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Quick fix: run a tiny local reverse proxy that <strong>removes</strong> the <code>Origin</code>{" "}
+                        header and <strong>adds</strong> CORS headers, then set Base URL to <code>http://localhost:11435</code>.
+                      </p>
+                      <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-2 text-[11px] leading-relaxed">
+                        <code>{`# Caddyfile (run: caddy run --config Caddyfile)
+:11435 {
+  header Access-Control-Allow-Origin "${appOrigin || "*"}"
+  header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+  header Access-Control-Allow-Headers "*"
+  reverse_proxy localhost:11434 {
+    header_up -Origin
+  }
+}`}</code>
+                      </pre>
+                    </div>
+                  ) : null}
                 </div>
               )}
 

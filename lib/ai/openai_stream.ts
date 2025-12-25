@@ -25,20 +25,56 @@ export async function* streamChatCompletion({
   }
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    signal,
-    body: JSON.stringify({
-      model,
-      stream: true,
-      messages,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers,
+      signal,
+      body: JSON.stringify({
+        model,
+        stream: true,
+        messages,
+      }),
+    })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Failed to fetch"
+    let hint = ""
+    if (typeof window !== "undefined") {
+      const hosted = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+      const loopback = (() => {
+        try {
+          const u = new URL(baseUrl)
+          return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
+        } catch {
+          return false
+        }
+      })()
+      if (hosted && loopback) {
+        hint = `\n\nCORS hint: You're using a hosted site (${window.location.origin}) but calling a local server (${baseUrl}). Your local server must allow CORS for this origin (or run a local reverse proxy that adds CORS headers).`
+      }
+    }
+    throw new Error(`AI request failed: ${detail}${hint}`)
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "")
-    throw new Error(`Proxy error ${res.status}: ${text || res.statusText}`)
+    let hint = ""
+    if (typeof window !== "undefined") {
+      const hosted = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+      const loopback = (() => {
+        try {
+          const u = new URL(baseUrl)
+          return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
+        } catch {
+          return false
+        }
+      })()
+      if (hosted && loopback) {
+        hint = `\n\nCORS hint: You're using a hosted site (${window.location.origin}) but calling a local server (${baseUrl}). Your local server must allow CORS for this origin (or run a local reverse proxy that adds CORS headers).`
+      }
+    }
+    throw new Error(`AI request failed ${res.status}: ${text || res.statusText}${hint}`)
   }
   if (!res.body) throw new Error("No response body for streaming")
 

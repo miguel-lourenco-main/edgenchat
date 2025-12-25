@@ -31,6 +31,25 @@ function cacheKey(providerId: AiProviderId, baseUrl: string) {
   return `${providerId}::${baseUrl.replace(/\/$/, "")}`
 }
 
+function isLoopbackBaseUrl(baseUrl: string) {
+  try {
+    const u = new URL(baseUrl)
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
+  } catch {
+    return false
+  }
+}
+
+function maybeCorsHint(baseUrl: string) {
+  if (typeof window === "undefined") return ""
+  const hosted = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+  if (!hosted) return ""
+  if (!isLoopbackBaseUrl(baseUrl)) return ""
+
+  // Keep this short; UI + README can contain the full recipe.
+  return `\n\nCORS hint: You're using a hosted site (${window.location.origin}) but calling a local server (${baseUrl}). Your local server must allow CORS for this origin (or run a local reverse proxy that adds CORS headers).`
+}
+
 export function getCachedModels(providerId: AiProviderId, baseUrl: string): CacheEntry | null {
   const key = cacheKey(providerId, baseUrl)
   const cache = loadCache()
@@ -42,10 +61,16 @@ export async function discoverModelsOpenAICompatible(baseUrl: string, apiKey?: s
   const headers: Record<string, string> = { "Content-Type": "application/json" }
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
-  const res = await fetch(url, { method: "GET", headers })
+  let res: Response
+  try {
+    res = await fetch(url, { method: "GET", headers })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Failed to fetch"
+    throw new Error(`Model discovery failed: ${detail}${maybeCorsHint(baseUrl)}`)
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "")
-    throw new Error(`Model discovery failed ${res.status}: ${text || res.statusText}`)
+    throw new Error(`Model discovery failed ${res.status}: ${text || res.statusText}${maybeCorsHint(baseUrl)}`)
   }
   const json = await res.json()
   const ids = (json?.data ?? [])
@@ -56,10 +81,16 @@ export async function discoverModelsOpenAICompatible(baseUrl: string, apiKey?: s
 
 export async function discoverModelsOllama(baseUrl: string): Promise<string[]> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/tags`
-  const res = await fetch(url, { method: "GET" })
+  let res: Response
+  try {
+    res = await fetch(url, { method: "GET" })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Failed to fetch"
+    throw new Error(`Ollama model discovery failed: ${detail}${maybeCorsHint(baseUrl)}`)
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "")
-    throw new Error(`Ollama model discovery failed ${res.status}: ${text || res.statusText}`)
+    throw new Error(`Ollama model discovery failed ${res.status}: ${text || res.statusText}${maybeCorsHint(baseUrl)}`)
   }
   const json = await res.json()
   const names = (json?.models ?? [])
