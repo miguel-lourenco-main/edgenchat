@@ -67,6 +67,7 @@ export function ChatTopbar({
 }: ChatTopbarProps) {
   const [settings, setSettings] = useState(() => loadLocalSettings())
   const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
+  const [warnedDiscovery, setWarnedDiscovery] = useState(false)
 
   useEffect(() => {
     const onSettings = () => {
@@ -77,12 +78,29 @@ export function ChatTopbar({
     return () => window.removeEventListener("edgen-chat:settings", onSettings)
   }, [])
 
+  // When model discovery finishes elsewhere (e.g. Settings page), update the dropdown from cache.
+  useEffect(() => {
+    const onModels = () => {
+      const s = loadLocalSettings()
+      if (s.ai.providerId !== "ollama") return
+      const baseUrl = s.ai.baseUrl.trim()
+      if (!baseUrl) return
+      const cached = getCachedModels("ollama", baseUrl)
+      if (cached?.models?.length) {
+        setDiscoveredModels(cached.models)
+      }
+    }
+    window.addEventListener("edgen-chat:models", onModels)
+    return () => window.removeEventListener("edgen-chat:models", onModels)
+  }, [])
+
   // When switching into Local (Ollama), refresh models once automatically.
   useEffect(() => {
     let cancelled = false
     async function run() {
       if (settings.ai.providerId !== "ollama") {
         setDiscoveredModels([])
+        setWarnedDiscovery(false)
         return
       }
       const baseUrl = settings.ai.baseUrl.trim()
@@ -113,8 +131,28 @@ export function ChatTopbar({
             setSettings(next)
           }
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        // In hosted production, this most commonly fails due to CORS/mixed-content when calling localhost.
+        const hosted = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+        const loopback = (() => {
+          try {
+            const u = new URL(baseUrl)
+            return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
+          } catch {
+            return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")
+          }
+        })()
+        if (!warnedDiscovery && hosted && loopback) {
+          setWarnedDiscovery(true)
+          toast({
+            title: "Ollama models not discovered",
+            description:
+              err instanceof Error
+                ? err.message
+                : "Browser blocked access to your local Ollama. Open Settings → Local (Ollama) for the CORS fix.",
+            variant: "destructive",
+          })
+        }
       }
     }
     run()

@@ -49,6 +49,7 @@ export function AdminLayout() {
   const isProxy = settings.ai.connectionMode === "proxy"
   const endpoint = (isProxy ? settings.ai.proxyBaseUrl : settings.ai.baseUrl).trim()
   const appOrigin = typeof window !== "undefined" ? window.location.origin : ""
+  const gitlabPagesOrigin = "https://edgenchat-d831b2.gitlab.io"
   const isHosted = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
   const isLoopbackBaseUrl = (() => {
     const baseUrl = settings.ai.baseUrl.trim()
@@ -169,15 +170,20 @@ export function AdminLayout() {
                     settings.ai.providerId === "openai_compatible" ? "border-primary ring-1 ring-primary/30" : "border-border",
                   )}
                   onClick={() => {
-                    setSettings((prev) => ({
-                      ...prev,
-                      ai: {
-                        ...prev.ai,
-                        providerId: "openai_compatible",
-                        connectionMode: "proxy",
-                        model: "gpt-4.1-mini",
-                      },
-                    }))
+                    const next = ((): LocalSettings => {
+                      const prev = loadLocalSettings()
+                      return {
+                        ...prev,
+                        ai: {
+                          ...prev.ai,
+                          providerId: "openai_compatible",
+                          connectionMode: "proxy",
+                          model: "gpt-4.1-mini",
+                        },
+                      }
+                    })()
+                    saveLocalSettings(next)
+                    setSettings(next)
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -200,21 +206,24 @@ export function AdminLayout() {
                   )}
                   onClick={() => {
                     const provider = AI_PROVIDERS.ollama
-                    setSettings((prev) => ({
-                      ...prev,
-                      ai: {
-                        ...prev.ai,
-                        providerId: "ollama",
-                        connectionMode: "direct",
-                        baseUrl: prev.ai.baseUrl || provider.defaultBaseUrl || prev.ai.baseUrl,
-                        // Prefer a real installed model if we have cached discovery; otherwise use a safe fallback.
-                        model: (() => {
-                          const baseUrl = (prev.ai.baseUrl || provider.defaultBaseUrl || prev.ai.baseUrl || "").trim()
-                          const cached = baseUrl ? getCachedModels("ollama", baseUrl) : null
-                          return cached?.models?.[0] ?? "llama3.1:8b"
-                        })(),
-                      },
-                    }))
+                    const next = ((): LocalSettings => {
+                      const prev = loadLocalSettings()
+                      const baseUrl = (prev.ai.baseUrl || provider.defaultBaseUrl || prev.ai.baseUrl || "").trim()
+                      const cached = baseUrl ? getCachedModels("ollama", baseUrl) : null
+                      return {
+                        ...prev,
+                        ai: {
+                          ...prev.ai,
+                          providerId: "ollama",
+                          connectionMode: "direct",
+                          baseUrl: baseUrl || provider.defaultBaseUrl || prev.ai.baseUrl,
+                          // Prefer a real installed model if we have cached discovery; otherwise use a safe fallback.
+                          model: cached?.models?.[0] ?? "llama3.1:8b",
+                        },
+                      }
+                    })()
+                    saveLocalSettings(next)
+                    setSettings(next)
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -302,19 +311,32 @@ export function AdminLayout() {
                         see a CORS/403 error.
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
+                        For this project, your GitLab Pages origin is: <code>{gitlabPagesOrigin}</code>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
                         Quick fix: run a tiny local reverse proxy that <strong>removes</strong> the <code>Origin</code>{" "}
                         header and <strong>adds</strong> CORS headers, then set Base URL to <code>http://localhost:11435</code>.
                       </p>
                       <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-2 text-[11px] leading-relaxed">
                         <code>{`# Caddyfile (run: caddy run --config Caddyfile)
 :11435 {
-  header Access-Control-Allow-Origin "${appOrigin || "*"}"
+  header Access-Control-Allow-Origin "${gitlabPagesOrigin}"
   header Access-Control-Allow-Methods "GET, POST, OPTIONS"
   header Access-Control-Allow-Headers "*"
   reverse_proxy localhost:11434 {
     header_up -Origin
   }
 }`}</code>
+                      </pre>
+                      <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-2 text-[11px] leading-relaxed">
+                        <code>{`# Alternative (Linux systemd) – enable CORS directly in Ollama:
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+sudo tee /etc/systemd/system/ollama.service.d/override.conf >/dev/null <<'EOF'
+[Service]
+Environment="OLLAMA_ORIGINS=${gitlabPagesOrigin}"
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart ollama`}</code>
                       </pre>
                     </div>
                   ) : null}
