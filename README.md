@@ -1,8 +1,6 @@
 # Edgen Chat (static Next.js app)
 
-Edgen Chat is a **fully static-exportable** Next.js chat UI that runs entirely in the **user’s browser** — no backend required. It supports **Ollama** (local) and **OpenAI-compatible** providers (any server exposing `/v1/chat/completions` + `/v1/models`).
-
-This is an MVP version of the Edgen Chat app, now used for demonstration and portfolio purposes
+Edgen Chat is an MVP version of the Edgen Chat app, now used for demonstration and portfolio purposes. It is a **fully static-exportable** Next.js chat UI that runs entirely in the **user’s browser** — no backend required. It supports **Ollama** (local) and **OpenAI-compatible** providers (any server exposing `/v1/chat/completions` + `/v1/models`).
 
 > Note: Auth/backends were intentionally removed for now to keep iteration fast. The `/auth` UI remains as a placeholder.
 
@@ -78,32 +76,6 @@ Edgen Chat does not require environment variables for normal use. Configure it v
 - **Model**: freeform string (sent as `model` to `/v1/chat/completions`)
 
 Settings are stored locally under the key `edgen-chat:settings:v1`.
-
----
-
-## Run locally
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Then open:
-
-- `http://localhost:3000/chat`
-- `http://localhost:3000/admin` (configure provider/model)
-
----
-
-## Build (static export)
-
-This project uses Next.js static export (`output: "export"`). Build output is written to `out/`.
-
-```bash
-pnpm build
-```
-
-To preview the static output, serve `out/` with any static server.
 
 ---
 
