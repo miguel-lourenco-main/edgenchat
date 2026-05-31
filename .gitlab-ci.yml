@@ -1,28 +1,25 @@
-image: node:22-bullseye
+# Submodule `infra` is not part of the parent tree; `include:local` cannot see those paths on GitLab.
+# Pin `ref` to match: `git ls-tree HEAD infra` (update both when bumping the submodule).
+include:
+  - project: public-work4/infra
+    ref: 9b5aefdbf859b548930c01b85ac7b080a1243cbc
+    file:
+      - ci/templates/fragments/toolchain-node-pnpm.gitlab-ci.yml
+      - ci/templates/deploy-gitlab-pages.gitlab-ci.yml
+
+default:
+  interruptible: true
 
 stages:
   - build
   - deploy
 
 variables:
-  # Keep pnpm store in-repo so GitLab cache can persist it between jobs.
-  PNPM_STORE_DIR: "$CI_PROJECT_DIR/.pnpm-store"
+  PNPM_CACHE_FOLDER: .pnpm-store
 
-cache:
-  key:
-    files:
-      - pnpm-lock.yaml
-  paths:
-    - .pnpm-store/
-
-before_script:
-  - corepack enable
-  # pnpm lockfile v9 => pnpm v9.x
-  - corepack prepare pnpm@9 --activate
-  - pnpm config set store-dir "$PNPM_STORE_DIR"
-  - pnpm install --frozen-lockfile
-
-build:
+# Named build_job so deploy-gitlab-pages.pages can depend on it.
+build_job:
+  extends: .node22_pnpm
   stage: build
   script:
     - pnpm build
@@ -32,19 +29,3 @@ build:
     expire_in: 1 week
     paths:
       - out/
-
-pages:
-  stage: deploy
-  needs:
-    - job: build
-      artifacts: true
-  script:
-    - rm -rf public
-    - mv out public
-  artifacts:
-    paths:
-      - public
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-
