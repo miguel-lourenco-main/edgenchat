@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+// Fixed-width icon rail shown only in command-center chat layout.
 export function NavRail() {
   const pathname = usePathname()
 

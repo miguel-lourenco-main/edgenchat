@@ -1,3 +1,5 @@
+// Client-side chat persistence: threads and messages live in IndexedDB with
+// localStorage/event-based refresh signals for cross-tab UI sync.
 import { openDb, runTx, txDelete, txGet, txGetAll, txGetAllFromIndex, txPut } from "@/lib/chat/idb"
 import type { ChatExportV1, ChatMessage, ChatThread, ChatRole } from "@/lib/chat/types"
 

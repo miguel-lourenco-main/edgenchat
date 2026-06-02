@@ -191,6 +191,7 @@ function useTypewriterText(
 }
 
 function renderMessageContent(text: string) {
+  // Lightweight markdown-ish rendering; code fences are handled per-line.
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none">
       {text.split("\n").map((line, i) => {
@@ -242,6 +243,7 @@ function renderMessageContent(text: string) {
 
 const ANIMATED_ASSISTANT_MESSAGE_IDS = new Set<string>()
 
+// Session-scoped guard so typewriter animation runs once per assistant message id.
 function MessageItem({
   message,
   isLast,

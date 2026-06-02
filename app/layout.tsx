@@ -37,6 +37,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // ThemeProvider + Toaster wrap every page; suppressHydrationWarning avoids
+  // next-themes class mismatch on first paint.
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">

@@ -1,6 +1,7 @@
 import type { LocalSettings } from "@/lib/settings/types"
 import { AI_MODELS, AI_PROVIDERS } from "@/lib/ai/catalog"
 
+// All AI/voice preferences are browser-local; no server round-trip.
 const STORAGE_KEY = "edgen-chat:settings:v1"
 
 const DEFAULTS: LocalSettings = {

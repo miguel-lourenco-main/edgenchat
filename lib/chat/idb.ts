@@ -1,3 +1,4 @@
+// Thin Promise wrappers around IndexedDB's callback-based API.
 type IDBValue = unknown
 
 function promisifyRequest<T>(req: IDBRequest<T>): Promise<T> {
@@ -50,6 +51,7 @@ export async function txGetAllFromIndex<T = IDBValue>(
   return (await promisifyRequest(index.getAll(query ?? null))) as T[]
 }
 
+// Runs fn inside a transaction and waits for commit before resolving.
 export async function runTx(db: IDBDatabase, storeNames: string | string[], mode: IDBTransactionMode, fn: (tx: IDBTransaction) => Promise<void> | void) {
   const tx = db.transaction(storeNames, mode)
   await fn(tx)

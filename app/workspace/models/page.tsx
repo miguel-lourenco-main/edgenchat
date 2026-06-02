@@ -1,5 +1,6 @@
 import { WorkspaceList } from "@/components/workspace/workspace-list"
 
+// Placeholder data until workspace models are wired to a real backend.
 const sampleModels = [
   {
     id: "1",

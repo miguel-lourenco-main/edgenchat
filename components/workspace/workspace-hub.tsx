@@ -8,6 +8,7 @@ import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const workspaceSections = [
+  // Static navigation cards; counts are placeholders until backend wiring lands.
   {
     id: "models",
     title: "Models",

@@ -1,5 +1,6 @@
 import { AI_PROVIDERS, type AiProviderId } from "@/lib/ai/catalog"
 
+// In-memory model lists keyed by provider + base URL, persisted in localStorage.
 const KEY = "edgen-chat:models-cache:v1"
 
 type CacheEntry = {

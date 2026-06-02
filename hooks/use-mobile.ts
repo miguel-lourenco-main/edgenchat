@@ -1,5 +1,6 @@
 import * as React from 'react'
 
+// Tailwind `md` breakpoint — matches the sidebar's mobile collapse threshold.
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {

@@ -57,6 +57,7 @@ export function ChatSidebar({
   const [expandedFolders, setExpandedFolders] = useState<string[]>(["folder-1"])
   const [expandedSections, setExpandedSections] = useState<string[]>(["today", "yesterday"])
   const [chats, setChats] = useState<ChatThread[]>([])
+  // Folder grouping is UI-only for now; chats are flat in IndexedDB.
   const folders: Array<{
     id: string
     name: string
@@ -107,6 +108,7 @@ export function ChatSidebar({
 
   if (!open) return null
 
+  // Auth removed; footer shows a static local-user placeholder.
   const userEmail = "local@example.com"
   const userName = "Local User"
   const initials = "LU"

@@ -23,6 +23,7 @@ export function ThemeToggle({
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
+  // Avoid hydration mismatch: theme is unknown until client mount.
   useEffect(() => setMounted(true), [])
 
   const icon = useMemo(() => {

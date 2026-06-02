@@ -1,5 +1,6 @@
 "use client"
 
+// Root route redirects to the primary chat experience.
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 

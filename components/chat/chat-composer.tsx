@@ -19,6 +19,8 @@ export function ChatComposer({ chatId }: { chatId: string }) {
   const [sending, setSending] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
 
+  // Persists the user turn, streams the assistant reply into IndexedDB, and
+  // supports mid-generation abort via AbortController.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (message.trim()) {

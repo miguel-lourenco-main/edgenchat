@@ -2,6 +2,7 @@ export type AiProviderId = "openai_compatible" | "ollama"
 
 export type AiConnectionMode = "proxy" | "direct"
 
+// Static registry of supported AI backends and their default model presets.
 export interface AiProvider {
   id: AiProviderId
   name: string

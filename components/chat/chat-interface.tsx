@@ -17,6 +17,8 @@ interface ChatInterfaceProps {
   layoutMode?: "classic" | "command-center"
 }
 
+// Shell for the chat experience: resizable sidebar, message list, and composer.
+// `layoutMode` toggles the command-center nav rail and sidebar density.
 export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
@@ -62,6 +64,7 @@ export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
     }
     void load()
 
+    // Re-fetch when another tab writes to IndexedDB or this tab mutates storage.
     const onRefresh = () => void load()
     window.addEventListener("edgen-chat:refresh", onRefresh)
     window.addEventListener("storage", (e) => {

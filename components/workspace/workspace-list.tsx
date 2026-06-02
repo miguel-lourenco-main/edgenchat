@@ -33,6 +33,7 @@ interface WorkspaceListProps {
   backHref: string
 }
 
+// Reusable table scaffold for workspace sub-pages (models, prompts, etc.).
 export function WorkspaceList({ title, description, items, type, backHref }: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all")
