@@ -2,11 +2,26 @@
 # Pin `ref` to match: `git ls-tree HEAD infra` (update both when bumping the submodule).
 include:
   - project: public-work4/infra
-    ref: 0a4e2bc46e12184aa13e4840729a5816f64aecc9
+    ref: 09864a43b70d6ad191344bc7ea1b0ecca0fdb158
     file:
       - ci/templates/fragments/toolchain-node-pnpm.gitlab-ci.yml
       - ci/templates/jobs-edgenchat.gitlab-ci.yml
       - ci/templates/deploy-gitlab-pages.gitlab-ci.yml
+      - ci/templates/jobs-comment-mirror.gitlab-ci.yml
 
 variables:
   PNPM_CACHE_FOLDER: .pnpm-store
+  # No base.gitlab-ci.yml here, so enable the comment-mirror module explicitly.
+  ENABLE_COMMENT_MIRROR: "1"
+
+# This project has no base.gitlab-ci.yml; declare stages so comment_mirror exists.
+stages:
+  - build
+  - deploy_production
+  - comment_mirror
+
+comment_mirror:
+  dependencies: []
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    COMMENT_MIRROR_ALLOWED_PATH_PREFIXES: "app/,components/,hooks/,lib/"
