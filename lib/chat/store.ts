@@ -54,6 +54,7 @@ async function getDb() {
   return await dbPromise
 }
 
+// Maps quota/IndexedDB failures to user-facing storage errors.
 function normalizeStorageError(err: unknown): Error {
   if (err instanceof Error) {
     const name = (err as any).name as string | undefined
@@ -68,6 +69,7 @@ function normalizeStorageError(err: unknown): Error {
   return new Error("Storage error")
 }
 
+// All threads, newest activity first (sorted by updatedAt).
 export async function listChats(): Promise<ChatThread[]> {
   try {
     const db = await getDb()
@@ -81,6 +83,7 @@ export async function listChats(): Promise<ChatThread[]> {
   }
 }
 
+// Single-thread lookup by primary key.
 export async function getChat(chatId: string): Promise<ChatThread | undefined> {
   const db = await getDb()
   const tx = db.transaction(STORES.chats, "readonly")
@@ -107,6 +110,7 @@ export async function createChat(opts?: { title?: string }): Promise<ChatThread>
   }
 }
 
+// Updates title and bumps updatedAt; no-op if the thread is missing.
 export async function renameChat(chatId: string, title: string): Promise<void> {
   const db = await getDb()
   await runTx(db, STORES.chats, "readwrite", async (tx) => {
@@ -118,6 +122,7 @@ export async function renameChat(chatId: string, title: string): Promise<void> {
   notifyRefresh()
 }
 
+// Removes a thread and all messages indexed by chatId.
 export async function deleteChat(chatId: string): Promise<void> {
   try {
     const db = await getDb()
@@ -135,6 +140,7 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
+// Wipes both object stores (full local reset).
 export async function deleteAllChats(): Promise<void> {
   try {
     const db = await getDb()
@@ -153,6 +159,7 @@ export async function deleteAllChats(): Promise<void> {
   }
 }
 
+// Keeps one thread and deletes every other thread plus its messages.
 export async function deleteAllChatsExcept(keepChatId: string): Promise<void> {
   try {
     const db = await getDb()
@@ -176,6 +183,7 @@ export async function deleteAllChatsExcept(keepChatId: string): Promise<void> {
   }
 }
 
+// Deletes all messages in a thread but leaves the thread row intact.
 export async function clearChat(chatId: string): Promise<void> {
   try {
     const db = await getDb()
@@ -191,6 +199,7 @@ export async function clearChat(chatId: string): Promise<void> {
   }
 }
 
+// Deletes specific messages and bumps the parent thread's updatedAt.
 export async function deleteMessages(chatId: string, messageIds: string[]): Promise<void> {
   if (!messageIds.length) return
   try {
@@ -210,6 +219,7 @@ export async function deleteMessages(chatId: string, messageIds: string[]): Prom
   }
 }
 
+// Convenience wrapper around deleteMessages filtered by role.
 export async function deleteMessagesByRole(chatId: string, role: ChatRole): Promise<void> {
   try {
     const msgs = await listMessages(chatId)
@@ -220,6 +230,7 @@ export async function deleteMessagesByRole(chatId: string, role: ChatRole): Prom
   }
 }
 
+// Drops the last N messages in chronological order.
 export async function deleteLastNMessages(chatId: string, n: number): Promise<void> {
   try {
     const msgs = await listMessages(chatId)
@@ -230,6 +241,7 @@ export async function deleteLastNMessages(chatId: string, n: number): Promise<vo
   }
 }
 
+// Serializes one thread and its messages into the v1 export shape.
 export async function exportChatToJson(chatId: string): Promise<ChatExportV1> {
   try {
     const db = await getDb()
@@ -245,6 +257,7 @@ export async function exportChatToJson(chatId: string): Promise<ChatExportV1> {
   }
 }
 
+// Messages for a thread, ordered oldest-first for prompt assembly.
 export async function listMessages(chatId: string): Promise<ChatMessage[]> {
   try {
     const db = await getDb()
@@ -259,6 +272,7 @@ export async function listMessages(chatId: string): Promise<ChatMessage[]> {
   }
 }
 
+// Appends a message and bumps the parent thread's updatedAt.
 export async function addMessage(chatId: string, role: ChatRole, content: string): Promise<ChatMessage> {
   const message: ChatMessage = {
     id: makeId("msg"),
@@ -298,6 +312,7 @@ export async function updateMessage(messageId: string, patch: Partial<Pick<ChatM
   }
 }
 
+// Full backup of every thread and message in IndexedDB.
 export async function exportToJson(): Promise<ChatExportV1> {
   const db = await getDb()
   const chatsTx = db.transaction(STORES.chats, "readonly")
@@ -307,6 +322,7 @@ export async function exportToJson(): Promise<ChatExportV1> {
   return { version: 1, exportedAt: now(), chats, messages }
 }
 
+// Restores chats/messages from a v1 export; overwrites records with matching ids.
 export async function importFromJson(payload: ChatExportV1): Promise<void> {
   if (payload.version !== 1) throw new Error("Unsupported export version")
   const db = await getDb()

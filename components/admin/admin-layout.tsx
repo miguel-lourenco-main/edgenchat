@@ -63,6 +63,7 @@ export function AdminLayout() {
       return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")
     }
   })()
+  // Required fields for the currently selected provider + connection mode.
   const missing: string[] = []
   if (isProxy && !settings.ai.proxyBaseUrl.trim()) missing.push("Proxy Base URL")
   if (!isProxy && !settings.ai.baseUrl.trim()) missing.push("Base URL")

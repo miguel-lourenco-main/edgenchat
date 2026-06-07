@@ -139,6 +139,7 @@ function useTypewriterText(
   fullText: string,
   opts?: { tickMs?: number },
 ) {
+  // Reveals one grapheme per tick for a typewriter effect on new assistant replies.
   // Strict "letter-by-letter" (grapheme-by-grapheme) typing:
   // exactly 1 visible grapheme per tick, no catch-up acceleration.
   const tickMs = opts?.tickMs ?? 4

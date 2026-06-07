@@ -47,6 +47,7 @@ const workspaceSections = [
   },
 ]
 
+// Landing page for workspace sub-routes (models, knowledge, prompts, tools).
 export function WorkspaceHub() {
   return (
     <div className="min-h-screen flex flex-col">

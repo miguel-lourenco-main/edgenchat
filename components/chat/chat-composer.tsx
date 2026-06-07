@@ -84,6 +84,7 @@ export function ChatComposer({ chatId }: { chatId: string }) {
   }
 
   const { provider, baseUrl, apiKey, model } = getAiConfig()
+  // Gate send until endpoint, model, and (when required) API key are all set.
   const aiReady = !!baseUrl && !!model && (!provider.requiresApiKey || !!apiKey)
 
   return (

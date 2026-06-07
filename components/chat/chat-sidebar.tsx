@@ -43,6 +43,7 @@ function relativeTime(ts: number) {
   return `${d}d ago`
 }
 
+// Thread list with search, time grouping, and bulk delete actions.
 export function ChatSidebar({
   open,
   onOpenChange,

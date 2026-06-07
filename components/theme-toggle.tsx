@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+// Light/dark/system theme picker; defers icon render until mount to avoid hydration mismatch.
 export function ThemeToggle({
   buttonClassName,
 }: {

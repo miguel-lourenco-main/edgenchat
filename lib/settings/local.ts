@@ -19,17 +19,20 @@ const DEFAULTS: LocalSettings = {
 }
 
 const DEFAULT_PROXY = {
+  // Sensible defaults when the user picks the OpenAI-compatible proxy path.
   providerId: "openai_compatible" as const,
   connectionMode: "proxy" as const,
   model: "gpt-4.1-mini",
 }
 
 const DEFAULT_LOCAL = {
+  // Sensible defaults when the user picks direct Ollama.
   providerId: "ollama" as const,
   connectionMode: "direct" as const,
   model: "llama3.1:8b",
 }
 
+// Merges persisted settings with defaults and migrates legacy field names.
 export function loadLocalSettings(): LocalSettings {
   if (typeof window === "undefined") return DEFAULTS
   try {
@@ -107,6 +110,7 @@ export function loadLocalSettings(): LocalSettings {
   }
 }
 
+// Persists settings and notifies listeners via edgen-chat:settings.
 export function saveLocalSettings(next: LocalSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   try {

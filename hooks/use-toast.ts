@@ -1,5 +1,6 @@
 'use client'
 
+// Global toast store (reducer + pub/sub) shared across components without React context.
 // Inspired by react-hot-toast library
 import * as React from 'react'
 

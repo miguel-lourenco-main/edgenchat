@@ -5,6 +5,7 @@ export interface OpenAIChatMessage {
   content: string
 }
 
+/** Arguments for streaming a chat completion from an OpenAI-compatible endpoint. */
 export interface StreamChatArgs {
   baseUrl: string
   apiKey?: string

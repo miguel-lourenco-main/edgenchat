@@ -1,3 +1,4 @@
+/** Role of a single chat turn when building the prompt history. */
 export type ChatRole = "user" | "assistant"
 
 /** A conversation thread stored locally in IndexedDB. */

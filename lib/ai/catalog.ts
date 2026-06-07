@@ -1,5 +1,7 @@
+/** Supported AI backend identifiers. */
 export type AiProviderId = "openai_compatible" | "ollama"
 
+/** How the browser reaches the provider: via a CORS proxy or direct base URL. */
 export type AiConnectionMode = "proxy" | "direct"
 
 // Static registry of supported AI backends and their default model presets.
@@ -11,6 +13,7 @@ export interface AiProvider {
   supportsModelDiscovery: boolean
 }
 
+/** One selectable preset in the static model dropdown. */
 export interface AiModelOption {
   id: string
   providerId: AiProviderId
@@ -63,6 +66,7 @@ export function getModelById(modelId: string | null | undefined) {
   return AI_MODELS.find((m) => m.id === modelId) ?? null
 }
 
+// Preset models bundled for a given provider id (not runtime discovery).
 export function getModelsForProvider(providerId: AiProviderId) {
   return AI_MODELS.filter((m) => m.providerId === providerId)
 }

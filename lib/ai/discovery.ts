@@ -51,12 +51,14 @@ function maybeCorsHint(baseUrl: string) {
   return `\n\nCORS hint: You're using a hosted site (${window.location.origin}) but calling a local server (${baseUrl}). Your local server must allow CORS for this origin (or run a local reverse proxy that adds CORS headers).`
 }
 
+// Returns cached model names if present; null when nothing has been fetched yet.
 export function getCachedModels(providerId: AiProviderId, baseUrl: string): CacheEntry | null {
   const key = cacheKey(providerId, baseUrl)
   const cache = loadCache()
   return cache[key] ?? null
 }
 
+// Lists model ids via GET /v1/models (OpenAI-compatible providers).
 export async function discoverModelsOpenAICompatible(baseUrl: string, apiKey?: string): Promise<string[]> {
   const url = `${baseUrl.replace(/\/$/, "")}/v1/models`
   const headers: Record<string, string> = { "Content-Type": "application/json" }
@@ -80,6 +82,7 @@ export async function discoverModelsOpenAICompatible(baseUrl: string, apiKey?: s
   return Array.from(new Set(ids)).sort()
 }
 
+// Lists installed tags via GET /api/tags (native Ollama API).
 export async function discoverModelsOllama(baseUrl: string): Promise<string[]> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/tags`
   let res: Response

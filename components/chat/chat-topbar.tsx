@@ -40,6 +40,7 @@ function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url)
 }
 
+// Opens a hidden file input and parses the selected JSON backup.
 async function pickAndReadJsonFile(): Promise<ChatExportV1> {
   return await new Promise((resolve, reject) => {
     const input = document.createElement("input")
