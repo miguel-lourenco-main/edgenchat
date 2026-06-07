@@ -81,6 +81,7 @@ export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
       {/* Nav Rail (only in command-center mode) */}
       {layoutMode === "command-center" && <NavRail />}
 
+      {/* Panel sizes persist per layout via autoSaveId. */}
       <ResizablePanelGroup direction="horizontal" autoSaveId={`chat-layout-${layoutMode}`}>
         {/* Sidebar */}
         <ResizablePanel

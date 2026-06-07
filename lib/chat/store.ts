@@ -87,6 +87,7 @@ export async function getChat(chatId: string): Promise<ChatThread | undefined> {
   return await txGet<ChatThread>(tx.objectStore(STORES.chats), chatId)
 }
 
+// Creates a thread with a generated id and bumps updatedAt on every message write.
 export async function createChat(opts?: { title?: string }): Promise<ChatThread> {
   const chat: ChatThread = {
     id: makeId("chat"),
@@ -120,6 +121,7 @@ export async function renameChat(chatId: string, title: string): Promise<void> {
 export async function deleteChat(chatId: string): Promise<void> {
   try {
     const db = await getDb()
+    // Cascade: remove the thread and every message indexed by chatId.
     await runTx(db, [STORES.chats, STORES.messages], "readwrite", async (tx) => {
       await txDelete(tx.objectStore(STORES.chats), chatId)
       const messagesStore = tx.objectStore(STORES.messages)
@@ -280,6 +282,7 @@ export async function addMessage(chatId: string, role: ChatRole, content: string
   }
 }
 
+// Incrementally patch message content (used while streaming assistant tokens).
 export async function updateMessage(messageId: string, patch: Partial<Pick<ChatMessage, "content">>): Promise<void> {
   try {
     const db = await getDb()
@@ -307,6 +310,7 @@ export async function exportToJson(): Promise<ChatExportV1> {
 export async function importFromJson(payload: ChatExportV1): Promise<void> {
   if (payload.version !== 1) throw new Error("Unsupported export version")
   const db = await getDb()
+  // Merge by id: existing records with the same keys are overwritten.
   await runTx(db, [STORES.chats, STORES.messages], "readwrite", async (tx) => {
     const chatsStore = tx.objectStore(STORES.chats)
     const messagesStore = tx.objectStore(STORES.messages)

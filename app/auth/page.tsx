@@ -1,3 +1,4 @@
+// Auth UI shell; Supabase was removed so submit currently redirects to /chat.
 import { AuthForm } from "@/components/auth/auth-form"
 
 export default function AuthPage() {

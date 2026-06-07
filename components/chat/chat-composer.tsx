@@ -14,6 +14,7 @@ import { streamChatCompletion } from "@/lib/ai/openai_stream"
 import Link from "next/link"
 import { Spinner } from "@/components/ui/spinner"
 
+// Message input wired to IndexedDB persistence and OpenAI-compatible streaming.
 export function ChatComposer({ chatId }: { chatId: string }) {
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)

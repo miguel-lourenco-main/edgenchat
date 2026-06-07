@@ -59,6 +59,7 @@ async function pickAndReadJsonFile(): Promise<ChatExportV1> {
   })
 }
 
+// Top bar: model picker, theme toggle, and chat backup import/export actions.
 export function ChatTopbar({
   onToggleSidebar,
   onNewChat,

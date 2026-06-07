@@ -26,6 +26,7 @@ export interface LocalVoiceSettings {
   autoSpeak: boolean
 }
 
+/** Browser-local settings blob persisted under edgen-chat:settings:v1. */
 export interface LocalSettings {
   ai: LocalAiSettings
   voice: LocalVoiceSettings

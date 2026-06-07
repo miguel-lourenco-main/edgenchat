@@ -58,6 +58,7 @@ export const AI_MODELS: AiModelOption[] = [
   { id: "ollama_mistral", providerId: "ollama", label: "Mistral", model: "mistral" },
 ]
 
+// Lookup helpers for the static preset list (distinct from runtime discovery).
 export function getModelById(modelId: string | null | undefined) {
   return AI_MODELS.find((m) => m.id === modelId) ?? null
 }

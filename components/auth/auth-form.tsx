@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { MessageSquare } from "lucide-react"
 
+// Placeholder sign-in/sign-up UI kept for layout parity after auth removal.
 export function AuthForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [mode, setMode] = useState<"signin" | "signup">("signin")

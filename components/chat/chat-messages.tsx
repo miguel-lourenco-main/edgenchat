@@ -14,6 +14,7 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
+// Loads messages for one chat, auto-scrolls during streaming, and animates new assistant replies.
 export function ChatMessages({
   chatId,
 }: {

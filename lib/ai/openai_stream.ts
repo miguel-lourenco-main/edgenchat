@@ -1,3 +1,5 @@
+// Client-side fetch + SSE parsing for OpenAI-compatible /v1/chat/completions streams.
+
 export interface OpenAIChatMessage {
   role: "system" | "user" | "assistant"
   content: string

@@ -32,6 +32,7 @@ interface ChatSidebarProps {
 }
 
 function relativeTime(ts: number) {
+  // Human-readable sidebar timestamps from epoch millis.
   const diff = Date.now() - ts
   const min = Math.floor(diff / 60000)
   if (min < 1) return "just now"
@@ -353,6 +354,7 @@ interface ChatItemProps {
   onDelete?: () => void
 }
 
+// Single row in the sidebar chat list with hover actions.
 function ChatItem({ chat, selected, onSelect, onRename, onDelete }: ChatItemProps) {
   return (
     <button

@@ -596,6 +596,7 @@ sudo systemctl restart ollama`}</code>
   )
 }
 
+// Card wrapper used to group related settings sections on the admin page.
 function SettingsSection({
   title,
   description,

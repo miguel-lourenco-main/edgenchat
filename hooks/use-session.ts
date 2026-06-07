@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+// Stub session hook kept so legacy imports compile after Supabase removal.
 export function useSession() {
   // Supabase removed; keep this hook for compatibility during refactor.
   const [loading] = useState(false)

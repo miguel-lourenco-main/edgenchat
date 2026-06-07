@@ -100,6 +100,7 @@ export async function discoverModelsOllama(baseUrl: string): Promise<string[]> {
   return Array.from(new Set(names)).sort()
 }
 
+// Fetches models from the provider, caches them in localStorage, and emits edgen-chat:models.
 export async function refreshDiscoveredModels(providerId: AiProviderId, baseUrl: string, apiKey?: string) {
   const provider = AI_PROVIDERS[providerId]
   if (!provider?.supportsModelDiscovery) return

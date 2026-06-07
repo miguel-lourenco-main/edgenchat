@@ -1,3 +1,4 @@
+// Workspace hub: navigation cards for models, knowledge, prompts, and tools.
 import { WorkspaceHub } from "@/components/workspace/workspace-hub"
 
 export default function WorkspacePage() {
