@@ -11,7 +11,7 @@ export interface StreamChatArgs {
   signal?: AbortSignal
 }
 
-// Minimal SSE parser for OpenAI-compatible chat completions streams.
+// Yields content deltas from an OpenAI-compatible POST /v1/chat/completions SSE stream.
 export async function* streamChatCompletion({
   baseUrl,
   apiKey,

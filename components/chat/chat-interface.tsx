@@ -17,6 +17,7 @@ interface ChatInterfaceProps {
   layoutMode?: "classic" | "command-center"
 }
 
+// Top-level chat shell: resizable sidebar, message list, composer, and optional NavRail.
 export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
@@ -62,6 +63,7 @@ export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
     }
     void load()
 
+    // Re-fetch when another tab or same-tab store mutation signals via notifyRefresh().
     const onRefresh = () => void load()
     window.addEventListener("edgen-chat:refresh", onRefresh)
     window.addEventListener("storage", (e) => {

@@ -1,6 +1,7 @@
 import { AI_PROVIDERS, type AiProviderId } from "@/lib/ai/catalog"
 
 const KEY = "edgen-chat:models-cache:v1"
+// Per-provider/baseUrl model lists; avoids hitting /v1/models on every dropdown open.
 
 type CacheEntry = {
   fetchedAt: number

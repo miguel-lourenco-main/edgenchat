@@ -57,6 +57,7 @@ export function ChatSidebar({
   const [expandedFolders, setExpandedFolders] = useState<string[]>(["folder-1"])
   const [expandedSections, setExpandedSections] = useState<string[]>(["today", "yesterday"])
   const [chats, setChats] = useState<ChatThread[]>([])
+  // Folders are UI scaffolding only; chat list is flat IndexedDB data for now.
   const folders: Array<{
     id: string
     name: string
@@ -110,6 +111,7 @@ export function ChatSidebar({
   const userEmail = "local@example.com"
   const userName = "Local User"
   const initials = "LU"
+  // Auth was removed; footer shows a static local-user placeholder.
 
   return (
     <div className={cn("flex h-full w-full min-w-0 flex-col border-r border-border bg-card")}>

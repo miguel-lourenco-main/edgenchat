@@ -241,6 +241,7 @@ function renderMessageContent(text: string) {
 }
 
 const ANIMATED_ASSISTANT_MESSAGE_IDS = new Set<string>()
+// Session-scoped guard: each assistant message id typewrites at most once per page load.
 
 function MessageItem({
   message,

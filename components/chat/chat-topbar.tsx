@@ -44,6 +44,7 @@ async function pickAndReadJsonFile(): Promise<ChatExportV1> {
     const input = document.createElement("input")
     input.type = "file"
     input.accept = "application/json"
+    // Hidden file picker; resolves when user selects a backup JSON file.
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return reject(new Error("No file selected"))

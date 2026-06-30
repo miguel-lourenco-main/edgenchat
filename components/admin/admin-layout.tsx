@@ -20,6 +20,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
+// Settings UI for AI provider, model discovery, and client-side voice prefs.
 export function AdminLayout() {
   const [settings, setSettings] = useState<LocalSettings>(() => loadLocalSettings())
   const [discoveredModels, setDiscoveredModels] = useState<string[]>([])

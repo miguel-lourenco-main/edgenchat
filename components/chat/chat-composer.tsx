@@ -40,6 +40,7 @@ export function ChatComposer({ chatId }: { chatId: string }) {
           const ac = new AbortController()
           setAbortController(ac)
           await addMessage(chatId, "user", content)
+          // Placeholder row updated incrementally as SSE tokens arrive.
           const assistant = await addMessage(chatId, "assistant", "")
 
           // Build history from stored messages (including the one we just wrote).

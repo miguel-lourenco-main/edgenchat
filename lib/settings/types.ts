@@ -1,5 +1,7 @@
 import type { AiConnectionMode, AiProviderId } from "@/lib/ai/catalog"
 
+// Shape of settings persisted in localStorage (lib/settings/local.ts).
+
 export interface LocalAiSettings {
   providerId: AiProviderId
   connectionMode: AiConnectionMode

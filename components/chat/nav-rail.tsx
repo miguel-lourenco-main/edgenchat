@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+// Icon-only vertical nav shown in command-center chat layout.
 export function NavRail() {
   const pathname = usePathname()
 

@@ -1,5 +1,6 @@
 export type AiProviderId = "openai_compatible" | "ollama"
 
+/** proxy = browser calls a CORS-enabled OpenAI-compatible gateway; direct = calls baseUrl from the client. */
 export type AiConnectionMode = "proxy" | "direct"
 
 export interface AiProvider {
@@ -17,6 +18,7 @@ export interface AiModelOption {
   model: string
 }
 
+// Static registry of supported backends; discovery/streaming behavior lives in lib/ai/discovery.ts.
 export const AI_PROVIDERS: Record<AiProviderId, AiProvider> = {
   openai_compatible: {
     id: "openai_compatible",

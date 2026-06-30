@@ -33,6 +33,7 @@ interface WorkspaceListProps {
   backHref: string
 }
 
+// Reusable table shell for workspace sub-pages (search, filter, row actions).
 export function WorkspaceList({ title, description, items, type, backHref }: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all")

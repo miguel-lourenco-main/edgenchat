@@ -1,5 +1,6 @@
 import { WorkspaceList } from "@/components/workspace/workspace-list"
 
+// Demo data for workspace UI; not wired to lib/ai yet.
 const sampleModels = [
   {
     id: "1",

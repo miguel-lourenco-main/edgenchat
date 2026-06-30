@@ -1,3 +1,5 @@
+// Client-side chat persistence: threads and messages live in IndexedDB with no server sync.
+// Cross-tab updates use localStorage + custom events (see notifyRefresh).
 import { openDb, runTx, txDelete, txGet, txGetAll, txGetAllFromIndex, txPut } from "@/lib/chat/idb"
 import type { ChatExportV1, ChatMessage, ChatThread, ChatRole } from "@/lib/chat/types"
 
@@ -9,6 +11,7 @@ const STORES = {
   messages: "messages",
 } as const
 
+// Singleton DB connection; schema is created on first open via onUpgrade.
 let dbPromise: Promise<IDBDatabase> | null = null
 
 function now() {
@@ -53,6 +56,7 @@ async function getDb() {
 }
 
 function normalizeStorageError(err: unknown): Error {
+  // Map browser quota errors to a user-actionable message.
   if (err instanceof Error) {
     const name = (err as any).name as string | undefined
     if (name === "QuotaExceededError") {
@@ -305,6 +309,7 @@ export async function exportToJson(): Promise<ChatExportV1> {
 export async function importFromJson(payload: ChatExportV1): Promise<void> {
   if (payload.version !== 1) throw new Error("Unsupported export version")
   const db = await getDb()
+  // Merge import: existing ids are overwritten by payload entries with the same key.
   await runTx(db, [STORES.chats, STORES.messages], "readwrite", async (tx) => {
     const chatsStore = tx.objectStore(STORES.chats)
     const messagesStore = tx.objectStore(STORES.messages)

@@ -7,6 +7,7 @@ import { Brain, BookOpen, Lightbulb, Wrench, Plus, Search, ArrowLeft } from "luc
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 
+// Placeholder cards for future workspace modules (models, RAG, prompts, tools).
 const workspaceSections = [
   {
     id: "models",
