@@ -143,6 +143,16 @@ sudo systemctl restart ollama
 
 ## Troubleshooting
 
+The chat top bar shows a **connection status** badge (checking / connected with model count / failed). It probes the model list on load and whenever the Base URL or API key changes (also live, before saving, on `/admin`); click it for details and **Retry**. Sending stays disabled until the server is connected and has the selected model. Failures are classified as:
+
+| Status | Meaning | Fix |
+| --- | --- | --- |
+| Server unreachable | nothing answered at the URL | start the server (`ollama serve`), check host and port |
+| Blocked by CORS | the server answered but the browser blocked it | restart Ollama with `OLLAMA_ORIGINS="<this site's origin>" ollama serve` (the UI shows the exact command), or use the proxy below |
+| Endpoint not found (404) | wrong base path, or not an Ollama/OpenAI-compatible server | use the server root, without `/v1` or other paths |
+| API key required (401) / Access denied (403) | the server needs a key or rejected it | set the API key in `/admin` |
+| Timed out | no answer within 6s | retry; the server may be loading a model |
+
 - **No models show up**
   - Ollama: ensure the Base URL is correct and `/api/tags` is reachable
   - OpenAI-compatible: ensure `/v1/models` is reachable (and your API key is valid if required)
