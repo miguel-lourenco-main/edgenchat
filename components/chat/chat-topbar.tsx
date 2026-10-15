@@ -14,10 +14,13 @@ import { exportChatToJson, exportToJson, importFromJson } from "@/lib/chat/store
 import { toast } from "@/hooks/use-toast"
 import type { ChatExportV1 } from "@/lib/chat/types"
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import { AI_MODELS } from "@/lib/ai/catalog"
 import { loadLocalSettings, saveLocalSettings } from "@/lib/settings/local"
-import { getCachedModels, refreshDiscoveredModels } from "@/lib/ai/discovery"
+import { getCachedModels } from "@/lib/ai/discovery"
+import { useConnection } from "@/components/connection/connection-provider"
+import { ConnectionBadge } from "@/components/connection/connection-status"
+import { isModelMissing } from "@/hooks/use-connection-probe"
+import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 interface ChatTopbarProps {
@@ -66,101 +69,20 @@ export function ChatTopbar({
   onDeleteOtherChats,
   onDeleteAllChats,
 }: ChatTopbarProps) {
-  const [settings, setSettings] = useState(() => loadLocalSettings())
-  const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
-  const [warnedDiscovery, setWarnedDiscovery] = useState(false)
+  const { settings, state, retry, target } = useConnection()
+  const model = settings.ai.model.trim()
+  const cachedModels = (() => {
+    if (!target) return []
+    return getCachedModels(settings.ai.providerId, target.baseUrl)?.models ?? []
+  })()
+  // Prefer the live list; fall back to the last known list, then to the static catalog.
+  const discoveredModels = state.status === "connected" ? state.models : cachedModels
+  const modelMissing = isModelMissing(state, model)
 
-  useEffect(() => {
-    const onSettings = () => {
-      const s = loadLocalSettings()
-      setSettings(s)
-    }
-    window.addEventListener("edgen-chat:settings", onSettings)
-    return () => window.removeEventListener("edgen-chat:settings", onSettings)
-  }, [])
-
-  // When model discovery finishes elsewhere (e.g. Settings page), update the dropdown from cache.
-  useEffect(() => {
-    const onModels = () => {
-      const s = loadLocalSettings()
-      if (s.ai.providerId !== "ollama") return
-      const baseUrl = s.ai.baseUrl.trim()
-      if (!baseUrl) return
-      const cached = getCachedModels("ollama", baseUrl)
-      if (cached?.models?.length) {
-        setDiscoveredModels(cached.models)
-      }
-    }
-    window.addEventListener("edgen-chat:models", onModels)
-    return () => window.removeEventListener("edgen-chat:models", onModels)
-  }, [])
-
-  // When switching into Local (Ollama), refresh models once automatically.
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      if (settings.ai.providerId !== "ollama") {
-        setDiscoveredModels([])
-        setWarnedDiscovery(false)
-        return
-      }
-      const baseUrl = settings.ai.baseUrl.trim()
-      if (!baseUrl) return
-
-      // Show cached immediately.
-      const cached = getCachedModels("ollama", baseUrl)
-      if (cached?.models?.length) {
-        setDiscoveredModels(cached.models)
-        // Ensure the current selection is valid for the dropdown.
-        const current = settings.ai.model.trim()
-        if (!current || !cached.models.includes(current)) {
-          const next = { ...settings, ai: { ...settings.ai, model: cached.models[0] } }
-          saveLocalSettings(next)
-          setSettings(next)
-        }
-      }
-
-      try {
-        const models = await refreshDiscoveredModels("ollama", baseUrl)
-        if (cancelled) return
-        setDiscoveredModels(models ?? [])
-        if (models?.length) {
-          const current = settings.ai.model.trim()
-          if (!current || !models.includes(current)) {
-            const next = { ...settings, ai: { ...settings.ai, model: models[0] } }
-            saveLocalSettings(next)
-            setSettings(next)
-          }
-        }
-      } catch (err) {
-        // In hosted production, this most commonly fails due to CORS/mixed-content when calling localhost.
-        const hosted = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-        const loopback = (() => {
-          try {
-            const u = new URL(baseUrl)
-            return u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1"
-          } catch {
-            return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")
-          }
-        })()
-        if (!warnedDiscovery && hosted && loopback) {
-          setWarnedDiscovery(true)
-          toast({
-            title: "Ollama models not discovered",
-            description:
-              err instanceof Error
-                ? err.message
-                : "Browser blocked access to your local Ollama. Open Settings → Local (Ollama) for the CORS fix.",
-            variant: "destructive",
-          })
-        }
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [settings.ai.providerId, settings.ai.baseUrl])
+  const selectModel = (value: string) => {
+    const s = loadLocalSettings()
+    saveLocalSettings({ ...s, ai: { ...s.ai, model: value } })
+  }
 
   return (
     <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
@@ -174,51 +96,43 @@ export function ChatTopbar({
           <Menu className="h-4 w-4" />
         </Button>
 
-        <Select
-          value={settings.ai.model}
-          onValueChange={(value) => {
-            const s = loadLocalSettings()
-            const next = {
-              ...s,
-              ai: {
-                ...s.ai,
-                model: value,
-              },
-            }
-            saveLocalSettings(next)
-            setSettings(next)
-          }}
-        >
-          <SelectTrigger className="w-[200px] h-9 bg-background text-foreground">
+        <Select value={settings.ai.model} onValueChange={selectModel}>
+          <SelectTrigger
+            className={cn("w-[200px] h-9 bg-background text-foreground", modelMissing && "border-amber-500/60")}
+            title={modelMissing ? `${model} is not available on this server` : undefined}
+          >
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
-            {settings.ai.providerId === "ollama" ? (
+            {discoveredModels.length > 0 ? (
               <>
+                {model && !discoveredModels.includes(model) ? (
+                  <SelectItem key={`missing-${model}`} value={model}>
+                    {model} (not available)
+                  </SelectItem>
+                ) : null}
                 {discoveredModels.map((m) => (
-                  <SelectItem key={`ollama-${m}`} value={m}>
+                  <SelectItem key={`discovered-${m}`} value={m}>
                     {m}
                   </SelectItem>
                 ))}
-                {discoveredModels.length === 0
-                  ? AI_MODELS.filter((m) => m.providerId === "ollama").map((m) => (
-                      <SelectItem key={m.id} value={m.model}>
-                        {m.label}
-                      </SelectItem>
-                    ))
-                  : null}
               </>
             ) : (
               <>
-                {AI_MODELS.filter((m) => m.providerId === "openai_compatible").map((m) => (
-                  <SelectItem key={m.id} value={m.model}>
-                    {m.label}
-                  </SelectItem>
-                ))}
+                {settings.ai.model.trim() && !AI_MODELS.some((m) => m.providerId === settings.ai.providerId && m.model === settings.ai.model) ? (
+                  <SelectItem value={settings.ai.model}>{settings.ai.model}</SelectItem>
+                ) : null}
+                {AI_MODELS.filter((m) => m.providerId === settings.ai.providerId).map((m) => (
+                <SelectItem key={m.id} value={m.model}>
+                  {m.label}
+                </SelectItem>
+              ))}
               </>
             )}
           </SelectContent>
         </Select>
+
+        <ConnectionBadge state={state} onRetry={retry} baseUrl={target?.baseUrl} modelMissing={modelMissing} />
       </div>
 
       <div className="flex items-center gap-2">

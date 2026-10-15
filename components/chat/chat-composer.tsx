@@ -13,14 +13,20 @@ import { getAiConfig } from "@/lib/ai/settings"
 import { streamChatCompletion } from "@/lib/ai/openai_stream"
 import Link from "next/link"
 import { Spinner } from "@/components/ui/spinner"
+import { useConnection } from "@/components/connection/connection-provider"
+import { ConnectionDetails, ModelAvailabilityNotice, sendBlockedReason } from "@/components/connection/connection-status"
+import { loadLocalSettings, saveLocalSettings } from "@/lib/settings/local"
 
 export function ChatComposer({ chatId }: { chatId: string }) {
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const { settings, state, retry, configured, target } = useConnection()
+  const blockedReason = sendBlockedReason(state, configured, settings.ai.model, settings.ai.providerId)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (blockedReason || sending) return
     if (message.trim()) {
       const content = message.trim()
       setMessage("")
@@ -72,6 +78,8 @@ export function ChatComposer({ chatId }: { chatId: string }) {
             description: aborted ? "Generation stopped." : msg,
             variant: aborted ? "default" : "destructive",
           })
+          // A failed send often means the server went away: refresh the status indicator.
+          if (!aborted) retry()
         } finally {
           setSending(false)
           setAbortController(null)
@@ -80,19 +88,30 @@ export function ChatComposer({ chatId }: { chatId: string }) {
     }
   }
 
-  const { provider, baseUrl, apiKey, model } = getAiConfig()
-  const aiReady = !!baseUrl && !!model && (!provider.requiresApiKey || !!apiKey)
-
   return (
     <div className="border-t border-border bg-card p-4">
       <form onSubmit={handleSubmit} className="mx-auto max-w-3xl">
-        {!aiReady && (
+        {!configured ? (
           <div className="mb-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center justify-between gap-3">
             <span>AI is not configured. Set up Proxy/Local + model in Settings.</span>
             <Button asChild size="sm" variant="secondary">
               <Link href="/admin">Open Settings</Link>
             </Button>
           </div>
+        ) : state.status === "failed" ? (
+          <ConnectionDetails state={state} onRetry={retry} baseUrl={target?.baseUrl} showSettingsLink className="mb-3" />
+        ) : (
+          <ModelAvailabilityNotice
+            state={state}
+            model={settings.ai.model}
+            providerId={settings.ai.providerId}
+            onRetry={retry}
+            onUseModel={(model) => {
+              const s = loadLocalSettings()
+              saveLocalSettings({ ...s, ai: { ...s.ai, model } })
+            }}
+            className="mb-3"
+          />
         )}
 
         <div className="relative rounded-lg border border-border bg-background focus-within:border-primary transition-colors">
@@ -145,9 +164,23 @@ export function ChatComposer({ chatId }: { chatId: string }) {
                   <TooltipContent>Stop generating</TooltipContent>
                 </Tooltip>
               ) : (
-                <Button type="submit" size="icon" className="h-8 w-8" disabled={!message.trim() || !aiReady}>
-                  <Send className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* A disabled button gets no pointer events, so the span carries the tooltip. */}
+                    <span tabIndex={blockedReason ? 0 : -1} className="inline-flex" data-testid="send-button-wrapper">
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={!message.trim() || !!blockedReason}
+                        aria-label={blockedReason ?? "Send message"}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{blockedReason ?? (message.trim() ? "Send message" : "Type a message to send")}</TooltipContent>
+                </Tooltip>
               )}
             </TooltipProvider>
           </div>
