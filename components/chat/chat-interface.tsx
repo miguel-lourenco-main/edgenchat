@@ -12,6 +12,7 @@ import { createChat, deleteAllChats, deleteAllChatsExcept, deleteChat, listChats
 import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Plus } from "lucide-react"
+import { ConnectionProvider } from "@/components/connection/connection-provider"
 
 interface ChatInterfaceProps {
   layoutMode?: "classic" | "command-center"
@@ -74,6 +75,7 @@ export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
   }, [])
 
   return (
+    <ConnectionProvider>
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Nav Rail (only in command-center mode) */}
       {layoutMode === "command-center" && <NavRail />}
@@ -250,5 +252,6 @@ export function ChatInterface({ layoutMode = "classic" }: ChatInterfaceProps) {
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
+    </ConnectionProvider>
   )
 }

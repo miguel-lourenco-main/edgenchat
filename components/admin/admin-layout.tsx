@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,38 +15,31 @@ import type { LocalSettings } from "@/lib/settings/types"
 import { toast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AI_MODELS, AI_PROVIDERS } from "@/lib/ai/catalog"
-import { getCachedModels, refreshDiscoveredModels } from "@/lib/ai/discovery"
-import { Spinner } from "@/components/ui/spinner"
+import { getCachedModels } from "@/lib/ai/discovery"
+import { useConnectionProbe } from "@/hooks/use-connection-probe"
+import { targetFromSettings } from "@/components/connection/connection-provider"
+import { ConnectionDetails, ModelAvailabilityNotice } from "@/components/connection/connection-status"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function AdminLayout() {
   const [settings, setSettings] = useState<LocalSettings>(() => loadLocalSettings())
-  const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
-  const [modelsMeta, setModelsMeta] = useState<{ fetchedAt: number; count: number } | null>(null)
-  const [refreshingModels, setRefreshingModels] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; detail: string } | null>(null)
 
   useEffect(() => {
     setSettings(loadLocalSettings())
   }, [])
 
-  useEffect(() => {
-    if (settings.ai.providerId !== "ollama") {
-      setDiscoveredModels([])
-      setModelsMeta(null)
-      return
-    }
-    const baseUrl = settings.ai.baseUrl.trim()
-    const cached = baseUrl ? getCachedModels("ollama", baseUrl) : null
-    setDiscoveredModels(cached?.models ?? [])
-    setModelsMeta(cached ? { fetchedAt: cached.fetchedAt, count: cached.models.length } : null)
-    setTestResult(null)
-  }, [settings.ai.providerId, settings.ai.connectionMode, settings.ai.proxyBaseUrl, settings.ai.baseUrl])
+  // Probe the draft (unsaved) settings: re-checks, debounced, as the user edits the URL or key.
+  const target = useMemo(
+    () => targetFromSettings(settings),
+    [settings.ai.providerId, settings.ai.connectionMode, settings.ai.baseUrl, settings.ai.proxyBaseUrl, settings.ai.apiKey],
+  )
+  const { state: connection, retry } = useConnectionProbe(target)
+  const cachedModels = target ? getCachedModels(settings.ai.providerId, target.baseUrl) : null
+  const discoveredModels = connection.status === "connected" ? connection.models : (cachedModels?.models ?? [])
+  const modelsMeta = cachedModels ? { fetchedAt: cachedModels.fetchedAt, count: cachedModels.models.length } : null
 
   const provider = AI_PROVIDERS[settings.ai.providerId]
-  const isLocal = settings.ai.providerId === "ollama"
   const isProxy = settings.ai.connectionMode === "proxy"
   const endpoint = (isProxy ? settings.ai.proxyBaseUrl : settings.ai.baseUrl).trim()
   const appOrigin = typeof window !== "undefined" ? window.location.origin : ""
@@ -72,37 +65,6 @@ export function AdminLayout() {
   const choice = settings.ai.providerId === "ollama" ? "local" : "proxy"
 
   const formatTime = (ts: number) => new Date(ts).toLocaleString()
-
-  // When switching into Local (Ollama), refresh models once automatically.
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      if (!isLocal) return
-      const baseUrl = settings.ai.baseUrl.trim()
-      if (!baseUrl) return
-      try {
-        const models = await refreshDiscoveredModels("ollama", baseUrl)
-        if (cancelled) return
-        setDiscoveredModels(models ?? [])
-        setModelsMeta(models ? { fetchedAt: Date.now(), count: models.length } : null)
-        // If the current model isn't actually installed, auto-select a sensible default.
-        if (models?.length) {
-          setSettings((prev) => {
-            if (prev.ai.providerId !== "ollama") return prev
-            const current = prev.ai.model.trim()
-            if (current && models.includes(current)) return prev
-            return { ...prev, ai: { ...prev.ai, model: models[0] } }
-          })
-        }
-      } catch {
-        // ignore; user can hit refresh after fixing URL/CORS
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [isLocal, settings.ai.baseUrl])
 
   return (
     <div className="min-h-screen bg-background">
@@ -367,33 +329,32 @@ sudo systemctl restart ollama`}</code>
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {isLocal ? (
+                    {discoveredModels.length > 0 ? (
                       <>
+                        {settings.ai.model.trim() && !discoveredModels.includes(settings.ai.model.trim()) ? (
+                          <SelectItem value={settings.ai.model}>{settings.ai.model} (not available)</SelectItem>
+                        ) : null}
                         {discoveredModels.map((m) => (
-                          <SelectItem key={`ollama-${m}`} value={m}>
+                          <SelectItem key={`discovered-${m}`} value={m}>
                             {m}
                           </SelectItem>
                         ))}
-                        {discoveredModels.length === 0
-                          ? AI_MODELS.filter((m) => m.providerId === "ollama").map((m) => (
-                              <SelectItem key={m.id} value={m.model}>
-                                {m.label}
-                              </SelectItem>
-                            ))
-                          : null}
                       </>
                     ) : (
                       <>
-                        {AI_MODELS.filter((m) => m.providerId === "openai_compatible").map((m) => (
-                          <SelectItem key={m.id} value={m.model}>
-                            {m.label}
-                          </SelectItem>
-                        ))}
+                        {settings.ai.model.trim() && !AI_MODELS.some((m) => m.providerId === settings.ai.providerId && m.model === settings.ai.model) ? (
+                          <SelectItem value={settings.ai.model}>{settings.ai.model}</SelectItem>
+                        ) : null}
+                        {AI_MODELS.filter((m) => m.providerId === settings.ai.providerId).map((m) => (
+                        <SelectItem key={m.id} value={m.model}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
                       </>
                     )}
                   </SelectContent>
                 </Select>
-                {isLocal && modelsMeta ? (
+                {modelsMeta ? (
                   <p className="text-xs text-muted-foreground">
                     Discovered models: <span className="text-foreground">{modelsMeta.count}</span> (last refreshed{" "}
                     <span className="text-foreground">{formatTime(modelsMeta.fetchedAt)}</span>)
@@ -466,85 +427,21 @@ sudo systemctl restart ollama`}</code>
                 <Input value={settings.ai.model} readOnly className="max-w-xl" />
               </div>
 
-              {isLocal && AI_PROVIDERS[settings.ai.providerId].supportsModelDiscovery && (
-                <div className="flex items-center gap-2 max-w-xl">
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const baseUrl = settings.ai.baseUrl.trim()
-                        setRefreshingModels(true)
-                        const models = await refreshDiscoveredModels("ollama", baseUrl)
-                        setDiscoveredModels(models ?? [])
-                        setModelsMeta(models ? { fetchedAt: Date.now(), count: models.length } : null)
-                        toast({ title: "Models refreshed", description: `Found ${models?.length ?? 0} models.` })
-                      } catch (err) {
-                        toast({
-                          title: "Refresh failed",
-                          description: err instanceof Error ? err.message : "Could not refresh models.",
-                          variant: "destructive",
-                        })
-                      } finally {
-                        setRefreshingModels(false)
-                      }
-                    }}
-                    disabled={!settings.ai.baseUrl.trim()}
-                  >
-                    {refreshingModels ? (
-                      <>
-                        <Spinner className="mr-2" /> Refreshing
-                      </>
-                    ) : (
-                      "Refresh models"
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const baseUrl = settings.ai.baseUrl.trim()
-                        if (!baseUrl) return
-                        setTesting(true)
-                        const started = performance.now()
-                        await refreshDiscoveredModels("ollama", baseUrl)
-                        const ms = Math.round(performance.now() - started)
-                        setTestResult({ ok: true, detail: `OK (${ms}ms)` })
-                      } catch (err) {
-                        setTestResult({
-                          ok: false,
-                          detail: err instanceof Error ? err.message : "Test failed",
-                        })
-                      } finally {
-                        setTesting(false)
-                      }
-                    }}
-                    disabled={!settings.ai.baseUrl.trim() || refreshingModels}
-                  >
-                    {testing ? (
-                      <>
-                        <Spinner className="mr-2" /> Testing
-                      </>
-                    ) : (
-                      "Test connection"
-                    )}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    Uses <code>/api/tags</code> (Ollama) on the Base URL.
-                  </span>
-                </div>
-              )}
-
-              {testResult ? (
-                <div
-                  className={cn(
-                    "rounded-md border p-3 max-w-xl text-sm",
-                    testResult.ok ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5",
-                  )}
-                >
-                  <p className="font-medium">Connection test</p>
-                  <p className="text-muted-foreground">{testResult.detail}</p>
-                </div>
-              ) : null}
+              <div className="grid gap-2 max-w-xl">
+                <Label>Connection</Label>
+                <ConnectionDetails state={connection} onRetry={retry} baseUrl={target?.baseUrl} />
+                <ModelAvailabilityNotice
+                  state={connection}
+                  model={settings.ai.model}
+                  providerId={settings.ai.providerId}
+                  onRetry={retry}
+                  onUseModel={(model) => setSettings((prev) => ({ ...prev, ai: { ...prev.ai, model } }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Checks <code>{settings.ai.providerId === "ollama" ? "/api/tags" : "/v1/models"}</code> on the{" "}
+                  {isProxy ? "Proxy Base URL" : "Base URL"} whenever it changes. Unsaved edits are checked too.
+                </p>
+              </div>
             </div>
           </SettingsSection>
 
