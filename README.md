@@ -20,6 +20,9 @@ Edgen Chat is an MVP version of the Edgen Chat app, now used for demonstration a
 - **Threaded chat history**
   - create/rename/delete chats
   - export/import chats as JSON
+- **Composer inputs**
+  - voice dictation via the browser's Web Speech API (Chrome, Edge, Safari; disabled with a tooltip where unsupported, e.g. Firefox)
+  - attach up to 5 text files (200 KB each) with the paperclip or drag-and-drop; their contents are inlined into the message, binary files are rejected
 - **Model discovery**
   - Ollama: `/api/tags`
   - OpenAI-compatible: `/v1/models`

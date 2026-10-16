@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Paperclip, Mic, Square } from "lucide-react"
+import { Send, Paperclip, Mic, MicOff, Square, X, FileText } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { addMessage, listMessages, updateMessage } from "@/lib/chat/store"
 import { toast } from "@/hooks/use-toast"
@@ -16,6 +16,15 @@ import { Spinner } from "@/components/ui/spinner"
 import { useConnection } from "@/components/connection/connection-provider"
 import { ConnectionDetails, ModelAvailabilityNotice, sendBlockedReason } from "@/components/connection/connection-status"
 import { loadLocalSettings, saveLocalSettings } from "@/lib/settings/local"
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
+import {
+  AttachmentError,
+  MAX_ATTACHMENTS,
+  composeMessageWithAttachments,
+  formatBytes,
+  readAttachment,
+  type ChatAttachment,
+} from "@/lib/chat/attachments"
 
 export function ChatComposer({ chatId }: { chatId: string }) {
   const [message, setMessage] = useState("")
@@ -23,13 +32,49 @@ export function ChatComposer({ chatId }: { chatId: string }) {
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const { settings, state, retry, configured, target } = useConnection()
   const blockedReason = sendBlockedReason(state, configured, settings.ai.model, settings.ai.providerId)
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const speech = useSpeechRecognition({
+    onFinalTranscript: (text) => setMessage((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${text}` : `${prev}${text}`)),
+    onError: (description) => toast({ title: "Voice input", description, variant: "destructive" }),
+  })
+
+  const addFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files)
+    const room = MAX_ATTACHMENTS - attachments.length
+    if (list.length > room) {
+      toast({
+        title: "Too many files",
+        description: `You can attach up to ${MAX_ATTACHMENTS} files per message.`,
+        variant: "destructive",
+      })
+    }
+    const read: ChatAttachment[] = []
+    for (const file of list.slice(0, Math.max(0, room))) {
+      try {
+        read.push(await readAttachment(file))
+      } catch (err) {
+        toast({
+          title: "Could not attach file",
+          description: err instanceof AttachmentError ? err.message : `Failed to read ${file.name}.`,
+          variant: "destructive",
+        })
+      }
+    }
+    if (read.length) setAttachments((prev) => [...prev, ...read].slice(0, MAX_ATTACHMENTS))
+  }
+
+  const hasContent = message.trim().length > 0 || attachments.length > 0
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (blockedReason || sending) return
-    if (message.trim()) {
-      const content = message.trim()
+    if (hasContent) {
+      const content = composeMessageWithAttachments(message.trim(), attachments)
+      if (speech.listening) speech.stop()
       setMessage("")
+      setAttachments([])
       void (async () => {
         try {
           const { provider, baseUrl, apiKey, model } = getAiConfig()
@@ -114,9 +159,57 @@ export function ChatComposer({ chatId }: { chatId: string }) {
           />
         )}
 
-        <div className="relative rounded-lg border border-border bg-background focus-within:border-primary transition-colors">
+        <div
+          className="relative rounded-lg border border-border bg-background focus-within:border-primary transition-colors"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes("Files")) e.preventDefault()
+          }}
+          onDrop={(e) => {
+            if (!e.dataTransfer.files.length) return
+            e.preventDefault()
+            void addFiles(e.dataTransfer.files)
+          }}
+        >
+          {attachments.length > 0 ? (
+            <ul className="flex flex-wrap gap-2 px-3 pt-3" aria-label="Attached files">
+              {attachments.map((a) => (
+                <li
+                  key={a.id}
+                  className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-md border border-border bg-muted/40 py-1 pl-2 pr-1 text-xs"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate" title={a.name}>
+                    {a.name}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">{formatBytes(a.size)}</span>
+                  <button
+                    type="button"
+                    className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label={`Remove ${a.name}`}
+                    onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            data-testid="composer-file-input"
+            onChange={(e) => {
+              const files = e.target.files
+              if (files?.length) void addFiles(files)
+              // Reset so picking the same file again still fires onChange.
+              e.target.value = ""
+            }}
+          />
           <Textarea
-            value={message}
+            value={speech.interim ? `${message}${message && !/\s$/.test(message) ? " " : ""}${speech.interim}` : message}
+            readOnly={speech.listening && !!speech.interim}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Send a message... (/ for commands, @ to mention)"
             className="min-h-[80px] resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground p-4 pr-12 focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -132,20 +225,46 @@ export function ChatComposer({ chatId }: { chatId: string }) {
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Attach text files"
+                    disabled={attachments.length >= MAX_ATTACHMENTS}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Paperclip className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Attach files</TooltipContent>
+                <TooltipContent>Attach text files (or drop them here)</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
-                    <Mic className="h-4 w-4" />
-                  </Button>
+                  {/* A disabled button gets no pointer events, so the span carries the tooltip. */}
+                  <span tabIndex={speech.supported ? -1 : 0} className="inline-flex">
+                    <Button
+                      type="button"
+                      variant={speech.listening ? "destructive" : "ghost"}
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={!speech.supported}
+                      aria-pressed={speech.listening}
+                      aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
+                      onClick={speech.toggle}
+                    >
+                      {speech.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                  </span>
                 </TooltipTrigger>
-                <TooltipContent>Voice input</TooltipContent>
+                <TooltipContent>
+                  {!speech.supported
+                    ? "Voice input is not supported in this browser"
+                    : speech.listening
+                      ? "Stop voice input"
+                      : "Voice input"}
+                </TooltipContent>
               </Tooltip>
 
               {sending ? (
@@ -172,14 +291,14 @@ export function ChatComposer({ chatId }: { chatId: string }) {
                         type="submit"
                         size="icon"
                         className="h-8 w-8"
-                        disabled={!message.trim() || !!blockedReason}
+                        disabled={!hasContent || !!blockedReason}
                         aria-label={blockedReason ?? "Send message"}
                       >
                         <Send className="h-4 w-4" />
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{blockedReason ?? (message.trim() ? "Send message" : "Type a message to send")}</TooltipContent>
+                  <TooltipContent>{blockedReason ?? (hasContent ? "Send message" : "Type a message to send")}</TooltipContent>
                 </Tooltip>
               )}
             </TooltipProvider>
@@ -200,6 +319,11 @@ export function ChatComposer({ chatId }: { chatId: string }) {
             <span>for new line</span>
           </div>
           <div className="flex items-center gap-2">
+            {speech.listening ? (
+              <span className="inline-flex items-center gap-1 text-destructive" role="status">
+                <span className="size-2 animate-pulse rounded-full bg-destructive" /> listening…
+              </span>
+            ) : null}
             {sending ? (
               <span className="inline-flex items-center gap-1">
                 <Spinner className="size-3" /> generating…
