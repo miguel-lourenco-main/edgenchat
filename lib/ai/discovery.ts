@@ -9,6 +9,7 @@ type CacheEntry = {
 
 type Cache = Record<string, CacheEntry> // key = `${providerId}::${baseUrl}`
 
+// Model lists are cached in localStorage, keyed by provider and base URL, so the picker works offline and across tabs.
 function loadCache(): Cache {
   if (typeof window === "undefined") return {}
   try {

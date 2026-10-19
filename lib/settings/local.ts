@@ -17,6 +17,7 @@ const DEFAULTS: LocalSettings = {
   },
 }
 
+// Per-setup starting points used when a saved setting is missing (see loadLocalSettings).
 const DEFAULT_PROXY = {
   providerId: "openai_compatible" as const,
   connectionMode: "proxy" as const,
@@ -29,6 +30,8 @@ const DEFAULT_LOCAL = {
   model: "llama3.1:8b",
 }
 
+// Reads settings from localStorage and fills gaps with defaults. Also migrates the older schemas
+// (legacy provider IDs, `defaultModel`, `modelId`) so stored settings from earlier versions still load.
 export function loadLocalSettings(): LocalSettings {
   if (typeof window === "undefined") return DEFAULTS
   try {
@@ -106,6 +109,7 @@ export function loadLocalSettings(): LocalSettings {
   }
 }
 
+// Saves settings and fires a same-tab event so open views can re-read them.
 export function saveLocalSettings(next: LocalSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   try {

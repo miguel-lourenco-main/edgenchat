@@ -1,5 +1,6 @@
 type IDBValue = unknown
 
+// IndexedDB uses callbacks; these helpers wrap requests and transactions in promises so callers can use async/await.
 function promisifyRequest<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result)
@@ -50,6 +51,8 @@ export async function txGetAllFromIndex<T = IDBValue>(
   return (await promisifyRequest(index.getAll(query ?? null))) as T[]
 }
 
+// Runs `fn` inside one transaction and resolves only after it commits. Keep `fn` to IndexedDB work: awaiting
+// anything else (e.g. a fetch) lets the transaction auto-commit early, and the commit wait below never resolves.
 export async function runTx(db: IDBDatabase, storeNames: string | string[], mode: IDBTransactionMode, fn: (tx: IDBTransaction) => Promise<void> | void) {
   const tx = db.transaction(storeNames, mode)
   await fn(tx)

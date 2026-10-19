@@ -33,6 +33,7 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProvider> = {
   },
 }
 
+// Static model list shown in the picker. `id` is a stable key stored in settings; `model` is the name sent to the API.
 export const AI_MODELS: AiModelOption[] = [
   // OpenAI-compatible defaults (works via proxy or direct)
   { id: "oa_gpt_4o_mini", providerId: "openai_compatible", label: "GPT-4o mini", model: "gpt-4o-mini" },

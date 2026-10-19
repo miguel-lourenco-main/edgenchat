@@ -9,6 +9,7 @@ const STORES = {
   messages: "messages",
 } as const
 
+// Opened once and shared by every call; the promise is kept so concurrent callers don't open the DB twice.
 let dbPromise: Promise<IDBDatabase> | null = null
 
 function now() {
@@ -35,6 +36,7 @@ function makeId(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
 }
 
+// Creates the object stores on first open; the `chatId` and `updatedAt`/`createdAt` indexes back the queries below.
 async function getDb() {
   if (!dbPromise) {
     dbPromise = openDb(DB_NAME, DB_VERSION, (db) => {
@@ -52,6 +54,7 @@ async function getDb() {
   return await dbPromise
 }
 
+// Maps browser quota failures to a user-actionable message; other errors pass through unchanged.
 function normalizeStorageError(err: unknown): Error {
   if (err instanceof Error) {
     const name = (err as any).name as string | undefined
@@ -226,6 +229,7 @@ export async function deleteLastNMessages(chatId: string, n: number): Promise<vo
   }
 }
 
+// Exports one chat and its messages in the versioned ChatExportV1 format, messages in chronological order.
 export async function exportChatToJson(chatId: string): Promise<ChatExportV1> {
   try {
     const db = await getDb()
@@ -302,6 +306,7 @@ export async function exportToJson(): Promise<ChatExportV1> {
   return { version: 1, exportedAt: now(), chats, messages }
 }
 
+// Upserts by id, so importing the same file twice overwrites rather than duplicates.
 export async function importFromJson(payload: ChatExportV1): Promise<void> {
   if (payload.version !== 1) throw new Error("Unsupported export version")
   const db = await getDb()
